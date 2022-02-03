@@ -1,0 +1,1 @@
+https://github.com/Blockstream/gdk/releases/download/release_0.0.49/greenaddress-0.0.49-cp39-cp39-linux_x86_64.whl; python_version == '3.9' --hash=sha256:fae092c3b81b782be36d0d3207f8b3dda756a8cd958947efe767b8feb22c754d
