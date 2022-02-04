@@ -99,8 +99,15 @@ class NotificationsService():
         wallet = await self._wait_for_wallet()
         gdk_notifications = wallet.session.notifications
 
+        async def next_notification():
+            while True:
+                try:
+                    return gdk_notifications.get(block=False)
+                except:
+                    await asyncio.sleep(0.5)
+
         while self._started:
-            notification = gdk_notifications.get(block=True, timeout=None)
+            notification = await next_notification()
             event = notification['event']
             
             if event == 'block':
@@ -110,6 +117,8 @@ class NotificationsService():
                 await self._put_utxos_notifications(queue=queue)
                 await self._put_confirmed_txs_notifications(block['block_height'], block['block_hash'], queue=queue)
                 await queue.join() # wait a bit to let notifications consumers get the queue
+
+            await asyncio.sleep(1)
         
     def _check_not_started(self):
         if self._started:

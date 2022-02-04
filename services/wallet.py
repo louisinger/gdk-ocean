@@ -1,4 +1,5 @@
 from domain.gdk_wallet import GdkWallet
+import greenaddress as gdk
 
 class WalletService:
     def __init__(self) -> None:
@@ -17,19 +18,20 @@ class WalletService:
         return self._wallet
     
     def generate_seed(self) -> str:
-        return self.generate_seed()
+        return gdk.generate_mnemonic()
     
-    def create_wallet(self, mnemonic: str, password: str) -> None:
+    def create_wallet(self, mnemonic: str, password: str, network: str) -> None:
         if self._is_logged():
             raise Exception('Wallet is already logged in') 
     
-        self._wallet = GdkWallet.create_new_wallet(mnemonic, password)
+        self._wallet = GdkWallet.create_new_wallet(mnemonic, password, network)
 
-    def login(self, password: str) -> None:
+    def login(self, password: bytes) -> None:
         if self._is_logged():
             raise Exception('Wallet is already logged in')
         
-        self._wallet = GdkWallet.login_with_pin(password)
+        print('Logging in...')
+        self._wallet = GdkWallet.login_with_pin(str(password), 'testnet-liquid')
     
     def change_password(self, password: str, newPassword: str) -> None:
         pass

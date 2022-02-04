@@ -5,30 +5,33 @@ class GrpcWalletServicer(wallet_pb2_grpc.WalletServiceServicer):
     def __init__(self, walletService: WalletService):
         self._svc = walletService
     
-    def GenSeed(self):
-        return wallet_pb2.GenSeedResponse(signing_mnemonic=self._svc.generate_seed())
+    def GenSeed(self, _, __):
+        seed = self._svc.generate_seed()
+        response = wallet_pb2.GenSeedResponse()
+        response.mnemonic = seed
+        return response
     
-    def CreateWallet(self, request: wallet_pb2.CreateWalletRequest):
-        self._svc.create_wallet(request.mnemonic, request.password)
+    def CreateWallet(self, request: wallet_pb2.CreateWalletRequest, _):
+        self._svc.create_wallet(request.mnemonic, request.password, "testnet-liquid")
         return wallet_pb2.CreateWalletResponse()
     
-    def Unlock(self, request: wallet_pb2.UnlockRequest):
+    def Unlock(self, request: wallet_pb2.UnlockRequest, _):
         self._svc.login(request.password)
-        return wallet_pb2.UnlockReply()
+        return wallet_pb2.UnlockResponse()
     
-    def ChangePassword(self, request: wallet_pb2.ChangePasswordRequest):
+    def ChangePassword(self, request: wallet_pb2.ChangePasswordRequest, _):
         self._svc.change_password(request.current_password, request.newPassword)
         return wallet_pb2.ChangePasswordResponse()
     
-    def RestoreWallet(self, request: wallet_pb2.RestoreWalletRequest):
+    def RestoreWallet(self, request: wallet_pb2.RestoreWalletRequest, _):
         self._svc.login(request.password)
         return wallet_pb2.RestoreWalletResponse()
 
-    def Status(self):
+    def Status(self, _, __):
         if self._svc.is_logged_in():
             return wallet_pb2.StatusResponse(status=wallet_pb2.Status.OPEN)
 
         return wallet_pb2.StatusResponse(status=wallet_pb2.Status.CLOSED)
             
-    def GetInfo(self, request: wallet_pb2.GetInfoRequest):
+    def GetInfo(self, _, __):
         return wallet_pb2.GetInfoResponse() # TODO

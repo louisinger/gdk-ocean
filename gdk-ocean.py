@@ -11,6 +11,7 @@ from services.wallet import WalletService
 
 from signal import SIGINT, SIGTERM
 from ocean.v1alpha import wallet_pb2_grpc, notification_pb2_grpc, transaction_pb2_grpc, account_pb2_grpc
+import greenaddress as gdk
 
 async def main():
     wallet_service = WalletService()
@@ -21,7 +22,7 @@ async def main():
     
     # start the grpc server
     server = grpc.aio.server()
-    server.add_insecure_port('[::]:50051')
+    server.add_insecure_port('localhost:50051')
     
     wallet_servicer = GrpcWalletServicer(wallet_service)
     transaction_servicer = GrpcTransactionServicer(transaction_service)
@@ -50,6 +51,8 @@ async def main():
         
     
 if __name__ == "__main__":
+    gdk.init({})
+    
     loop = asyncio.get_event_loop()
     main_task = asyncio.ensure_future(main())
     

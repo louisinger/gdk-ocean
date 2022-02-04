@@ -4,11 +4,7 @@ import greenaddress as gdk
 from domain.gdk_utils import make_session, gdk_resolve
 from domain.gdk_account import GdkAccount
 
-
 class GdkWallet:
-    def generate_mnemonic(self) -> str:
-        return gdk.generate_mnemonic()
-    
     def __init__(self):
         self.AMP_ACCOUNT_TYPE = '2of2_no_recovery'
         self.PIN_DATA_FILENAME = 'pin_data.json'
@@ -32,10 +28,12 @@ class GdkWallet:
     @classmethod
     def login_with_pin(cls, pin: str, network: str):
         self = cls()
-        pin_data = open(self.PIN_DATA_FILENAME).read()
+        pin_data = json.loads(open(self.PIN_DATA_FILENAME).read())
         self.session = make_session(network)
-        self.session.login_user({}, {"pin": pin, "pin_data": pin_data}).resolve()
+        print(pin, pin_data)
+        self.session.login_user({}, {'pin': pin, 'pin_data': pin_data}).resolve()
         self._get_existing_subaccounts()
+        print('Logged in')
         return self
     
     def _get_existing_subaccounts(self):
