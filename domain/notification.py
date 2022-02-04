@@ -13,7 +13,6 @@ class NotificationType(Enum):
     TX_UNCONFIRMED = 6
     TX_UNSPECIFIED = 7
 
-
 class BaseNotification():
     def __init__(self) -> None:
         self.type: NotificationType = None
@@ -38,15 +37,14 @@ class UtxoNotification(BaseNotification):
     
     def to_proto(self) :
         return None
-            
     
 class UtxoSpentNotification(UtxoNotification):
-    def __init__(self, utxo: Utxo):
-        super().__init__('utxo_spent', utxo)
+    def __init__(self, utxo: Utxo, account_name: str):
+        super().__init__('utxo_spent', utxo, account_name)
         
 class UtxoUnspecifiedNotification(UtxoNotification):
-    def __init__(self, utxo: Utxo):
-        super().__init__('utxo_unspecified', utxo)
+    def __init__(self, utxo: Utxo, account_name: str):
+        super().__init__('utxo_unspecified', utxo, account_name)
     
 
 class TxNotification(BaseNotification):

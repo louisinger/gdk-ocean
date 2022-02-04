@@ -1,11 +1,12 @@
+import logging
 import greenaddress as gdk
 import json
 from typing import List, Dict, Tuple
 from domain.address_details import AddressDetails
 from domain.gdk_utils import gdk_resolve
 from domain.receiver import Receiver, receiver_to_dict
-from domain.unspents_locker import Outpoint, UtxosLocker
 from domain.utxo import CoinSelectionResult, Utxo
+from domain.locker import Locker, Outpoint
 
 # fetch_subaccount() is using to get the subaccount JSON object from a GDK session
 def fetch_subaccount(session: gdk.Session, accountID: str):
@@ -22,18 +23,19 @@ def fetch_subaccount(session: gdk.Session, accountID: str):
     return subaccount
 
 class GdkAccount():
-    def __init__(self, session: gdk.Session, accountKey: str):
+    def __init__(self, session: gdk.Session, account_key: str, locker_svc: Locker):
         self.session = session
-        self.accountKey = accountKey
-        self.locker = UtxosLocker()
-        subaccount = fetch_subaccount(session, self.accountKey)
+        self.account_key = account_key
+        self.locker = locker_svc
+        subaccount = fetch_subaccount(session, self.account_key)
         self.pointer = subaccount['pointer']
         self.type = subaccount['type']
         self.gaid = self.session.get_subaccount(self.pointer).resolve()['receiving_id']
     
-    def get_balance(self) -> int:
-        return self.session.get_balance({'subaccount': self.pointer, 'num_confs': 0}).resolve()
-
+    def get_balance(self, num_confs: int = 0) -> Dict[str, int]:
+        b = self.session.get_balance({'subaccount': self.pointer, 'num_confs': num_confs}).resolve()
+        return b
+    
     def get_new_address(self) -> AddressDetails:
         return self.session.get_receive_address({'subaccount': self.pointer}).resolve()
 
@@ -42,16 +44,16 @@ class GdkAccount():
         return previous_addresses['list'], previous_addresses['last_pointer']
 
     def list_all_addresses(self) -> List[AddressDetails]:
-        last_pointer = 0
-        addresses: List[AddressDetails] = []
+        addresses, last_pointer = self._get_previous_addresses(0)
         while last_pointer != 1:
-            new_addresses, last_pointer = self._get_previous_addresses(last_pointer)
+            last_pointer = last_pointer - 1
+            new_addresses, _ = self._get_previous_addresses(last_pointer)
             addresses.extend(new_addresses)
         
         return addresses
 
     def _lock_coin_selection(self, coin_selection: CoinSelectionResult):
-        for utxo in coin_selection.utxos:
+        for utxo in coin_selection['utxos']:
             self.locker.lock(utxo)
 
     def select_utxos(self, asset: str, amount: int) -> CoinSelectionResult: 
@@ -60,7 +62,7 @@ class GdkAccount():
         selected_utxos: List[Utxo] = []
         for utxo in all_utxos_for_asset:
             selected_utxos.append(utxo)
-            total += utxo.value
+            total += utxo['value']
             
             if total >= amount:
                 break
@@ -129,14 +131,19 @@ class GdkAccount():
         return all_txs
         
     def send(self, receivers: List[Receiver]) -> str:
+        if receivers.__len__() == 0:
+            raise Exception('No recipient provided')
+    
+        logging.debug(f'Sending {receivers}')
+    
         details = {
             'subaccount': self.pointer,
-            'addresses': [map(lambda receiver: receiver_to_dict(receiver), receivers)],
+            'addressees': [receiver_to_dict(receiver) for receiver in receivers],
             'utxos': self._get_unspent_outputs(True)
         }
 
-        details = gdk_resolve(gdk.create_transaction(self.session.session_obj, json.dumps(details)))
-        details = gdk_resolve(gdk.sign_transaction(self.session.session_obj, json.dumps(details)))
+        details = self.session.create_transaction(details).resolve()
+        details = self.session.sign_transaction(details).resolve()
         hex = details['transaction']
-        details = gdk_resolve(gdk.send_transaction(self.session.session_obj, json.dumps(details)))
+        details = self.session.send_transaction(details).resolve()
         return hex

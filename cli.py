@@ -1,29 +1,42 @@
-from email.policy import default
+import logging
 import click
 import grpc
-from ocean.v1alpha import wallet_pb2_grpc, wallet_pb2
+from ocean.v1alpha import wallet_pb2_grpc, wallet_pb2, account_pb2_grpc, account_pb2, types_pb2, transaction_pb2_grpc, transaction_pb2
 
 def _get_wallet_stub_from_context(ctx: click.Context) -> wallet_pb2_grpc.WalletServiceStub:
     return ctx.obj['wallet']
 
+def _get_account_stub_from_context(ctx: click.Context) -> account_pb2_grpc.AccountServiceStub:
+    return ctx.obj['account']
+
+def _get_transaction_stub_from_context(ctx: click.Context) -> transaction_pb2_grpc.TransactionServiceStub:
+    return ctx.obj['transaction']
+
 @click.group()
-@click.option('--verbose', is_flag=True, default=False)
+@click.option('--debug', is_flag=True, default=True)
 @click.option('--host', default='localhost')
 @click.option('--port', default=50051)
 @click.pass_context
-def cli(ctx: click.Context, verbose: bool, host: str, port: int):
+def cli(ctx: click.Context, debug: bool, host: str, port: int):
     """
     A command line interface for Gdk-ocean.
     """
     channel = grpc.insecure_channel(f'{host}:{port}')
-    stub = wallet_pb2_grpc.WalletServiceStub(channel)
+    wallet_svc = wallet_pb2_grpc.WalletServiceStub(channel)
+    account_svc = account_pb2_grpc.AccountServiceStub(channel)
+    transaction_svc = transaction_pb2_grpc.TransactionServiceStub(channel)
     
     ctx.ensure_object(dict)
-    ctx.obj['verbose'] = verbose
-    ctx.obj['wallet'] = stub
+
+    if debug:
+        logging.basicConfig(level=logging.DEBUG)
+    
+    ctx.obj['wallet'] = wallet_svc
+    ctx.obj['account'] = account_svc
+    ctx.obj['transaction'] = transaction_svc
     
     global verbose_flag
-    verbose_flag = verbose
+    verbose_flag = debug
     
 @cli.command()
 @click.pass_context
@@ -33,7 +46,7 @@ def genseed(ctx: click.Context):
     """
     wallet_stub = _get_wallet_stub_from_context(ctx)
     seed = wallet_stub.GenSeed(wallet_pb2.GenSeedRequest())
-    print(seed)
+    logging.info(seed.mnemonic)
 
 @cli.command()
 @click.option('--mnemonic', '-m', default=None)
@@ -46,7 +59,7 @@ def create(ctx: click.Context, mnemonic: str, password: str):
     
     wallet_stub = _get_wallet_stub_from_context(ctx)
     response = wallet_stub.CreateWallet(request)
-    print(response)
+    logging.info(response)
 
 
 @cli.command()
@@ -57,7 +70,108 @@ def unlock(ctx: click.Context, password: str):
     request.password = password.encode('utf-8')
     wallet_stub = _get_wallet_stub_from_context(ctx)
     response = wallet_stub.Unlock(request)
-    print(response)
+    logging.info(response)
 
+@cli.command()
+@click.option('--name', '-n', default="AMP Account")
+@click.pass_context
+def createaccount(ctx: click.Context, name: str):
+    request = account_pb2.CreateAccountRequest(name=name)
+    account_stub = _get_account_stub_from_context(ctx)
+    response = account_stub.CreateAccount(request)
+    logging.info(response)
+
+@cli.command()
+@click.option('--account', '-a', default=None)
+@click.pass_context
+def getnewaddress(ctx: click.Context, account: str):
+    account_k = types_pb2.AccountKey()
+    account_k.id = 0
+    account_k.name = account
+    request = account_pb2.DeriveAddressRequest(account_key=account_k)
+    request.num_of_addresses = 1
+    
+    account_stub = _get_account_stub_from_context(ctx)
+    
+    response = account_stub.DeriveAddress(request)
+    logging.info(response)
+    
+@cli.command()
+@click.option('--account', '-a', default=None)
+@click.pass_context
+def listaddresses(ctx: click.Context, account: str):
+    account_k = types_pb2.AccountKey()
+    account_k.id = 0
+    account_k.name = account
+    request = account_pb2.ListAddressesRequest(account_key=account_k)
+    
+    account_stub = _get_account_stub_from_context(ctx)
+    response = account_stub.ListAddresses(request)
+    logging.info(response)
+
+
+@cli.command()
+@click.option('--account', '-a', default=None)
+@click.pass_context
+def balance(ctx: click.Context, account: str):
+    account_k = types_pb2.AccountKey()
+    account_k.id = 0
+    account_k.name = account
+    request = account_pb2.BalanceRequest(account_key=account_k)
+    account_stub = _get_account_stub_from_context(ctx)
+    response = account_stub.Balance(request)
+    logging.info(response)
+
+@cli.command()
+@click.option('--account', '-a', default=None)
+@click.pass_context
+def listutxos(ctx: click.Context, account: str):
+    account_k = types_pb2.AccountKey()
+    account_k.id = 0
+    account_k.name = account
+    request = account_pb2.ListUtxosRequest(account_key=account_k)
+    account_stub = _get_account_stub_from_context(ctx)
+    response = account_stub.ListUtxos(request)
+    logging.info(response)
+
+@cli.command()
+@click.pass_context
+def fees(ctx: click.Context):
+    request = transaction_pb2.EstimateFeesRequest()
+    transaction_stub = _get_transaction_stub_from_context(ctx)
+    response = transaction_stub.EstimateFees(request)
+    logging.info(response)
+    
+@cli.command()
+@click.option('--account', '-a', default=None)
+@click.option('--to', '-t', default=None)
+@click.option('--sats', '-s', default=None)
+@click.option('--asset', '-ass', default=None)
+@click.pass_context
+def transfer(ctx: click.Context, account: str, to: str, sats: str, asset: str):
+    account_k = types_pb2.AccountKey()
+    account_k.id = 0
+    account_k.name = account
+    out = types_pb2.Output()
+    out.asset = asset
+    out.amount = int(sats)
+    out.address = to
+    receivers = [out]
+    request = transaction_pb2.TransferRequest(account_key=account_k, receivers=receivers)
+    transaction_stub = _get_transaction_stub_from_context(ctx)
+    response = transaction_stub.Transfer(request)
+    logging.info(response)
+    
+@cli.command()
+@click.option('--account', '-a', default=None)
+@click.option('--sats', '-s', default=None)
+@click.option('--asset', '-ass', default=None)
+@click.pass_context
+def selectutxos(ctx: click.Context, account: str, sats: str, asset: str):
+    request = transaction_pb2.SelectUtxosRequest(account_key=types_pb2.AccountKey(id=0, name=account), target_amount=int(sats), target_asset=asset, strategy=0)
+    transaction_stub = _get_transaction_stub_from_context(ctx)
+    response = transaction_stub.SelectUtxos(request)
+    logging.info(response)
+    
 if __name__ == '__main__':
     cli(obj={})

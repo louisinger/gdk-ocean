@@ -1,7 +1,7 @@
 from domain.address_details import AddressDetails
 from domain.gdk_account import GdkAccount
 from domain.gdk_wallet import GdkWallet
-from typing import List
+from typing import Dict, List
 
 from domain.utxo import Utxo
 from services.wallet import WalletService
@@ -27,10 +27,10 @@ class AccountService:
         account = wallet.get_account(account_name)
         return account.list_all_addresses()
     
-    def balance(self, account_name: str) -> int:
+    def balance(self, account_name: str, min_num_confs: int) -> Dict[str, int]:
         wallet = self._wallet_svc.get_wallet()
         account = wallet.get_account(account_name)
-        return account.get_balance()
+        return account.get_balance(min_num_confs)
     
     def list_utxos(self, account_name: str) -> List[Utxo]:
         wallet = self._wallet_svc.get_wallet()

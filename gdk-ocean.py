@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import grpc
 from handlers.grpc_account import GrpcAccountServicer
 from handlers.grpc_notifications import GrpcNotificationsServicer
@@ -17,12 +18,16 @@ async def main():
     wallet_service = WalletService()
     transaction_service = TransactionService(wallet_service)
     notifications_service = NotificationsService(wallet_service)
+    notifications_service.add_txs_check_account('AMP Account')
+    notifications_service.add_utxos_check_account('AMP Account')
     account_service = AccountService(wallet_service)
     
+    logging.basicConfig(level=logging.DEBUG)
     
     # start the grpc server
     server = grpc.aio.server()
-    server.add_insecure_port('localhost:50051')
+    address = 'localhost:50051'
+    server.add_insecure_port(address)
     
     wallet_servicer = GrpcWalletServicer(wallet_service)
     transaction_servicer = GrpcTransactionServicer(transaction_service)
@@ -32,12 +37,14 @@ async def main():
     account_pb2_grpc.add_AccountServiceServicer_to_server(account_servicer, server)
 
     # notificiation servicer is async, we need to await the start of notifications service
+    logging.debug("start the notifications service...")
     notifs_queue = asyncio.Queue()
     notifications_servicer = await GrpcNotificationsServicer.create(notifs_queue)
     notification_pb2_grpc.add_NotificationServiceServicer_to_server(notifications_servicer, server)
     notif_svc_task = asyncio.create_task(notifications_service.start(notifs_queue))
+    logging.debug("notifications service started")
     
-    print("starting grpc server...")
+    logging.info("starting grpc server... " + address)
     
     try:
         await asyncio.gather(
@@ -46,7 +53,7 @@ async def main():
             notifications_servicer.task,
         )
     except asyncio.CancelledError:
-        print("stopping grpc server...")
+        logging.info("stopping grpc server...")
         await server.stop(5)
         
     

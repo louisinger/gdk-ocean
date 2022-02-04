@@ -1,8 +1,10 @@
+import logging
 from typing import Dict
 import json
 import greenaddress as gdk
 from domain.gdk_utils import make_session, gdk_resolve
 from domain.gdk_account import GdkAccount
+from domain.locker import Locker
 
 class GdkWallet:
     def __init__(self):
@@ -12,7 +14,8 @@ class GdkWallet:
         self.session: gdk.Session = None
         self.last_block_height = 0
         self.accounts: Dict[str, GdkAccount] = {}
-
+        self.locker = Locker()
+        
     """Class method to create and return an instance of gdk_wallet"""
     @classmethod
     def create_new_wallet(cls, mnemonic: str, pin: str, network: str):
@@ -30,16 +33,15 @@ class GdkWallet:
         self = cls()
         pin_data = json.loads(open(self.PIN_DATA_FILENAME).read())
         self.session = make_session(network)
-        print(pin, pin_data)
         self.session.login_user({}, {'pin': pin, 'pin_data': pin_data}).resolve()
         self._get_existing_subaccounts()
-        print('Logged in')
+        logging.debug('Logged in')
         return self
     
     def _get_existing_subaccounts(self):
         subaccounts = self.session.get_subaccounts({}).resolve()
         for account in subaccounts['subaccounts']:
-            self.accounts[account['name']] = GdkAccount(self.session, account['name'])
+            self.accounts[account['name']] = GdkAccount(self.session, account['name'], self.locker)
 
     def is_logged_in(self) -> bool:
         return self.session is not None and self.session.session_obj is not None 
@@ -67,7 +69,7 @@ class GdkWallet:
     
     def create_new_account(self, account_key: str) -> GdkAccount:
         self.session.create_subaccount({'name': account_key, 'type': self.AMP_ACCOUNT_TYPE}).resolve()
-        new_account = GdkAccount(self.session, account_key)
+        new_account = GdkAccount(self.session, account_key, self.locker)
         self.accounts[account_key] = new_account
         return new_account
         

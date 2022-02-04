@@ -14,9 +14,9 @@ def to_grpc_utxo(utxo: Utxo) -> types_pb2.Utxo:
     return types_pb2.Utxo(
         txid=utxo['txid'],
         index=utxo['index'],
-        asset=utxo['asset'],
-        value=utxo['value'],
-        script=utxo['script'],
+        asset=bytes.fromhex(utxo['asset']),
+        value=utxo['value'].to_bytes(8, 'big'),
+        script=bytes.fromhex(utxo['script']),
         is_confirmed=utxo['is_confirmed'],
         is_locked=utxo['is_locked']
     )

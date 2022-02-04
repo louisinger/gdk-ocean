@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from typing import Dict, Set, TypedDict, List
 from domain.gdk_wallet import GdkWallet
 from domain.notification import BaseNotification, TxConfirmedNotification, UtxoSpentNotification, UtxoUnspecifiedNotification
@@ -16,7 +17,12 @@ def _get_utxos_by_account(wallet: GdkWallet) -> Dict[str, Dict[str, List[Utxo]]]
 
 # def _get_transactions_by_account(wallet: GdkWallet, account: str) -> Dict[str, List[]]:
 
-def _diff_utxos_list(current: Dict[str, List[Utxo]], new: Dict[str, List[Utxo]]) -> List[BaseNotification]:
+def _diff_utxos_list(current: Dict[str, List[Utxo]], new: Dict[str, List[Utxo]], account: str) -> List[BaseNotification]:
+    if not current:
+        current = {}
+    if not new:
+        new = {}
+    
     notifs: List[BaseNotification] = []
     
     current_list: List[Utxo] = []
@@ -30,11 +36,11 @@ def _diff_utxos_list(current: Dict[str, List[Utxo]], new: Dict[str, List[Utxo]])
         
     for utxo in new_list:
         if utxo not in current_list:
-            notifs.append(UtxoUnspecifiedNotification(utxo))
+            notifs.append(UtxoUnspecifiedNotification(utxo, account))
     
     for utxo in current_list:
         if utxo not in new_list:
-            notifs.append(UtxoSpentNotification(utxo))
+            notifs.append(UtxoSpentNotification(utxo, account))
     
     return notifs
 
@@ -54,11 +60,12 @@ class NotificationsService():
         # init the state
         try:
             wallet = self._wallet_svc.get_wallet() 
-            self._utxos_by_account = _get_utxos_by_account(wallet_svc)
+            self._utxos_by_account = _get_utxos_by_account(wallet)
         except:
             self._utxos_by_account = {}    
     
     async def _put_in_queue(self, notification: BaseNotification, queue: asyncio.Queue) -> None:
+        logging.debug("new notification {} put in queue".format(notification.type))
         await queue.put(notification)
     
     async def _put_utxos_notifications(self, queue: asyncio.Queue) -> None:
@@ -66,7 +73,7 @@ class NotificationsService():
         new_utxos_by_account = _get_utxos_by_account(wallet)
         
         for account_name in self._utxos_check_accounts:
-            utxos_notifications = _diff_utxos_list(new_utxos_by_account[account_name], self._utxos_by_account[account_name])
+            utxos_notifications = _diff_utxos_list(self._utxos_by_account.get(account_name), new_utxos_by_account.get(account_name), account_name)
             for notification in utxos_notifications:
                 await self._put_in_queue(notification, queue)
         # update the cache with the new state
@@ -111,7 +118,7 @@ class NotificationsService():
             event = notification['event']
             
             if event == 'block':
-                print('block notification!', notification['block']['block_height'], notification['block']['block_hash'])
+                logging.debug('block notification -> {} {}'.format(notification['block']['block_height'], notification['block']['block_hash']))
                 block = BlockNotification(notification['block'])
                 # compute notifications from new state each time we get a block
                 await self._put_utxos_notifications(queue=queue)

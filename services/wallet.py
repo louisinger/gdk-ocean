@@ -1,3 +1,4 @@
+import logging
 from domain.gdk_wallet import GdkWallet
 import greenaddress as gdk
 
@@ -14,7 +15,7 @@ class WalletService:
     
     def get_wallet(self) -> GdkWallet:
         if not self._is_logged():
-            raise Exception('Wallet is ready (locked or not set up)')
+            raise Exception('Wallet is not ready (locked or not set up)')
         return self._wallet
     
     def generate_seed(self) -> str:
@@ -30,7 +31,7 @@ class WalletService:
         if self._is_logged():
             raise Exception('Wallet is already logged in')
         
-        print('Logging in...')
+        logging.debug('logging in...')
         self._wallet = GdkWallet.login_with_pin(str(password), 'testnet-liquid')
     
     def change_password(self, password: str, newPassword: str) -> None:

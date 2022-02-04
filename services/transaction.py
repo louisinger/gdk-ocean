@@ -1,3 +1,4 @@
+import logging
 from typing import List
 from domain.receiver import Receiver
 from domain.utxo import CoinSelectionResult
@@ -35,5 +36,6 @@ class TransactionService:
         
     def estimate_fees(self) -> int:
         wallet = self._wallet_svc.get_wallet()
-        fees = gdk.get_fee_estimates(wallet.session).resolve()["fees"]
+        fees = wallet.session.get_fee_estimates()["fees"]
+        logging.debug(f"Estimated fees: {fees}")
         return fees[1] # 1 block confirmation, 0 is min-relay-fees
