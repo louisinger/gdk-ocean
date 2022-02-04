@@ -67,6 +67,9 @@ class GdkAccount():
             if total >= amount:
                 break
         
+        if total < amount:
+            raise Exception(f'Not enough funds for asset {asset} missing {amount - total} satoshi')
+        
         result = CoinSelectionResult(total=total, utxos=selected_utxos, asset=asset, change=total-amount)
         self._lock_coin_selection(result)
         return result

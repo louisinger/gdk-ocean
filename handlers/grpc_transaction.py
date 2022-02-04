@@ -11,6 +11,7 @@ class GrpcTransactionServicer(transaction_pb2_grpc.TransactionServiceServicer):
     def SelectUtxos(self, request: transaction_pb2.SelectUtxosRequest, _) -> transaction_pb2.SelectUtxosResponse:
         coinselection = self._svc.select_utxos(request.account_key.name, request.target_asset, request.target_amount)
         utxos = map(lambda utxo: to_grpc_utxo(utxo), coinselection['utxos'])
+        logging.debug(f"Selected UTXOs: {coinselection}")
         return transaction_pb2.SelectUtxosResponse(
             utxos=utxos,
             change=coinselection['change'],
