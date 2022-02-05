@@ -137,8 +137,6 @@ class GdkAccount():
         if receivers.__len__() == 0:
             raise Exception('No recipient provided')
     
-        logging.debug(f'Sending {receivers}')
-    
         details = {
             'subaccount': self.pointer,
             'addressees': [receiver_to_dict(receiver) for receiver in receivers],

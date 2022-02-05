@@ -37,5 +37,4 @@ class TransactionService:
     def estimate_fees(self) -> int:
         wallet = self._wallet_svc.get_wallet()
         fees = wallet.session.get_fee_estimates()["fees"]
-        logging.debug(f"Estimated fees: {fees}")
         return fees[1] # 1 block confirmation, 0 is min-relay-fees

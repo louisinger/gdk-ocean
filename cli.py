@@ -1,7 +1,7 @@
 import logging
 import click
 import grpc
-from ocean.v1alpha import wallet_pb2_grpc, wallet_pb2, account_pb2_grpc, account_pb2, types_pb2, transaction_pb2_grpc, transaction_pb2
+from ocean.v1alpha import wallet_pb2_grpc, wallet_pb2, account_pb2_grpc, account_pb2, types_pb2, transaction_pb2_grpc, transaction_pb2, notification_pb2, notification_pb2_grpc
 
 def _get_wallet_stub_from_context(ctx: click.Context) -> wallet_pb2_grpc.WalletServiceStub:
     return ctx.obj['wallet']
@@ -11,6 +11,9 @@ def _get_account_stub_from_context(ctx: click.Context) -> account_pb2_grpc.Accou
 
 def _get_transaction_stub_from_context(ctx: click.Context) -> transaction_pb2_grpc.TransactionServiceStub:
     return ctx.obj['transaction']
+
+def _get_notification_stub_from_context(ctx: click.Context) -> notification_pb2_grpc.NotificationServiceStub:
+    return ctx.obj['notification']
 
 @click.group()
 @click.option('--debug', is_flag=True, default=True)
@@ -25,6 +28,7 @@ def cli(ctx: click.Context, debug: bool, host: str, port: int):
     wallet_svc = wallet_pb2_grpc.WalletServiceStub(channel)
     account_svc = account_pb2_grpc.AccountServiceStub(channel)
     transaction_svc = transaction_pb2_grpc.TransactionServiceStub(channel)
+    notifications_svc = notification_pb2_grpc.NotificationServiceStub(channel)
     
     ctx.ensure_object(dict)
 
@@ -34,6 +38,7 @@ def cli(ctx: click.Context, debug: bool, host: str, port: int):
     ctx.obj['wallet'] = wallet_svc
     ctx.obj['account'] = account_svc
     ctx.obj['transaction'] = transaction_svc
+    ctx.obj['notification'] = notifications_svc
     
     global verbose_flag
     verbose_flag = debug
@@ -173,5 +178,22 @@ def selectutxos(ctx: click.Context, account: str, sats: str, asset: str):
     response = transaction_stub.SelectUtxos(request)
     logging.info(response)
     
+@cli.command()
+@click.option('--account', '-a', default=None)
+@click.pass_context
+def watchutxos(ctx: click.Context, account: str):
+    request = notification_pb2.UtxosNotificationsRequest(account_key=types_pb2.AccountKey(id=0, name=account))
+    notification_stub = _get_notification_stub_from_context(ctx)
+    for notification in notification_stub.UtxosNotifications(request):
+        logging.info(notification)
+    
+@cli.command()
+@click.pass_context
+def watchtxs(ctx: click.Context):
+    request = notification_pb2.TransactionNotificationsRequest()
+    notification_stub = _get_notification_stub_from_context(ctx)
+    for notification in notification_stub.TransactionNotifications(request):
+        logging.info(notification)
+
 if __name__ == '__main__':
     cli(obj={})

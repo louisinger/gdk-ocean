@@ -1,5 +1,5 @@
 from ocean.v1alpha import notification_pb2, types_pb2
-from domain.utxo import Utxo
+from domain.utxo import Utxo, to_grpc_utxo
 from enum import Enum
 
 class NotificationType(Enum):
@@ -16,7 +16,10 @@ class NotificationType(Enum):
 class BaseNotification():
     def __init__(self) -> None:
         self.type: NotificationType = None
-
+        
+    def to_proto(self):
+        raise Exception('to_proto method must be implemented by a child notification class')
+    
 class UtxoNotification(BaseNotification):
     def __init__(self, n_type: NotificationType, data: Utxo, account_name: str):
         self.type = n_type
@@ -36,15 +39,18 @@ class UtxoNotification(BaseNotification):
             raise Exception(f"Unknown utxo event type: {self.type}")
     
     def to_proto(self) :
-        return None
+        account_key = types_pb2.AccountKey(id=0, name=self.account_name)
+        utxo_proto = to_grpc_utxo(self.data)
+        utxo_with_event = types_pb2.UtxoWithEvent(account_key=account_key, utxo=utxo_proto, event_type=self._type_to_tx_event_type())
+        return notification_pb2.UtxosNotificationsResponse(utxos=[utxo_with_event])
     
 class UtxoSpentNotification(UtxoNotification):
     def __init__(self, utxo: Utxo, account_name: str):
-        super().__init__('utxo_spent', utxo, account_name)
+        super().__init__(NotificationType.UTXO_SPENT, utxo, account_name)
         
 class UtxoUnspecifiedNotification(UtxoNotification):
     def __init__(self, utxo: Utxo, account_name: str):
-        super().__init__('utxo_unspecified', utxo, account_name)
+        super().__init__(NotificationType.UTXO_UNSPECIFIED, utxo, account_name)
     
 
 class TxNotification(BaseNotification):
@@ -68,22 +74,28 @@ class TxNotification(BaseNotification):
         else:
             raise Exception(f"Unknown tx event type: {self.type}")
     
+    def _get_block_details(self) -> notification_pb2.BlockDetails:
+        return notification_pb2.BlockDetails(
+            hash=bytes.fromhex(self.data["block_hash"]),
+            height=self.data["block_height"],
+            timestamp=0,
+        )
+    
     def to_proto(self) -> notification_pb2.TransactionNotificationsResponse:
         return notification_pb2.TransactionNotificationsResponse(
             txid=self.data["txid"],
             event_type=self._type_to_tx_event_type(),
-            block_height=self.data["block_height"],
-            block_hash=self.data["block_hash"],
+            block_details=self._get_block_details(),
         )
         
 class TxConfirmedNotification(TxNotification):
     def __init__(self, txid: str, block_hash: str, block_height: int):
-        super().__init__('tx_confirmed', txid, block_height, block_hash)
+        super().__init__(NotificationType.TX_CONFIRMED, txid, block_height, block_hash)
     
 class TxUnconfirmedNotification(TxNotification):
     def __init__(self, txid: str, block_height: int, block_hash: str):
-        super().__init__('tx_unconfirmed', txid, block_height, block_hash)
+        super().__init__(NotificationType.TX_UNCONFIRMED, txid, block_height, block_hash)
 
 class TxUnspecifiedNotification(TxNotification):
     def __init__(self, txid: str, block_height: int, block_hash: str):
-        super().__init__('tx_unspecified', txid, block_height, block_hash)
+        super().__init__(NotificationType.TX_UNSPECIFIED, txid, block_height, block_hash)

@@ -53,9 +53,10 @@ class NotificationsService():
         self._wallet_svc = wallet_svc
         self._started = False
         
+        self.queue = asyncio.Queue()
+        
         # the accounts to compute diff from
         self._utxos_check_accounts: Set[str] = set()
-        self._txs_check_accounts: Set[str] = set()
 
         # init the state
         try:
@@ -81,8 +82,8 @@ class NotificationsService():
     
     async def _put_confirmed_txs_notifications(self, height: int, block_hash: str, queue: asyncio.Queue) -> None:
         wallet = self._wallet_svc.get_wallet()
-        
-        for account_name in self._txs_check_accounts:
+        all_accounts_names = list(wallet.accounts.keys())
+        for account_name in all_accounts_names:
             try:
                 account = wallet.get_account(account_name)
                 txs_for_height = account.get_transactions(height)
@@ -118,7 +119,7 @@ class NotificationsService():
             event = notification['event']
             
             if event == 'block':
-                logging.debug('block notification -> {} {}'.format(notification['block']['block_height'], notification['block']['block_hash']))
+                logging.debug(f"new block: {notification['block']['block_height']} {notification['block']['block_hash']}")
                 block = BlockNotification(notification['block'])
                 # compute notifications from new state each time we get a block
                 await self._put_utxos_notifications(queue=queue)
@@ -137,16 +138,10 @@ class NotificationsService():
     def remove_utxos_check_account(self, account_name: str) -> None:
         self._utxos_check_accounts.remove(account_name)
     
-    def add_txs_check_account(self, account_name: str) -> None:
-        self._txs_check_accounts.add(account_name)
-        
-    def remove_txs_check_account(self, account_name: str) -> None:
-        self._txs_check_accounts.remove(account_name)
-    
-    async def start(self, q: asyncio.Queue) -> None:
+    async def start(self) -> None:
         self._check_not_started()
         self._started = True
-        await self._handle_gdk_notifications(q)
+        await self._handle_gdk_notifications(self.queue)
     
     def stop(self):
         self._started = False

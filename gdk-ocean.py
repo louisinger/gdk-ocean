@@ -18,8 +18,6 @@ async def main():
     wallet_service = WalletService()
     transaction_service = TransactionService(wallet_service)
     notifications_service = NotificationsService(wallet_service)
-    notifications_service.add_txs_check_account('AMP Account')
-    notifications_service.add_utxos_check_account('AMP Account')
     account_service = AccountService(wallet_service)
     
     logging.basicConfig(level=logging.DEBUG)
@@ -38,10 +36,9 @@ async def main():
 
     # notificiation servicer is async, we need to await the start of notifications service
     logging.debug("start the notifications service...")
-    notifs_queue = asyncio.Queue()
-    notifications_servicer = await GrpcNotificationsServicer.create(notifs_queue)
+    notifications_servicer = await GrpcNotificationsServicer.create(notifications_service)
     notification_pb2_grpc.add_NotificationServiceServicer_to_server(notifications_servicer, server)
-    notif_svc_task = asyncio.create_task(notifications_service.start(notifs_queue))
+    notif_svc_task = asyncio.create_task(notifications_service.start())
     logging.debug("notifications service started")
     
     logging.info("starting grpc server... " + address)

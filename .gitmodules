@@ -1,0 +1,3 @@
+[submodule "specs/ocean"]
+	path = specs/ocean
+	url = https://github.com/altafan/ocean.git
