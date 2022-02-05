@@ -2,9 +2,9 @@
 
 gdk-ocean is a Liquid wallet running on a gRPC server. It implements the [ocean API](https://github.com/vulpemventures/ocean)
 
-# Usage
+# Usage
 
-## Server
+## Server
 
 The current version of gdk-ocean uses Python 3.9, see `requirements.txt` for dependencies.
 
