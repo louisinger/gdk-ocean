@@ -10,6 +10,18 @@ class Utxo(TypedDict):
     is_confirmed: bool
     is_locked: bool
 
+class Outpoint():
+    def __init__(self, txid: str, index: int):
+        self.txid = txid
+        self.index = index
+    
+    @classmethod
+    def from_utxo(cls, utxo: Utxo) -> 'Outpoint':
+        return cls(utxo['txid'], utxo['index'])
+    
+    def to_string(self) -> str:
+        return f"{self.txid}:{self.index}"
+
 def to_grpc_utxo(utxo: Utxo) -> types_pb2.Utxo:
     return types_pb2.Utxo(
         txid=utxo['txid'],

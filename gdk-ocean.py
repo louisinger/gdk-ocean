@@ -57,7 +57,8 @@ async def main():
 if __name__ == "__main__":
     gdk.init({})
     
-    loop = asyncio.get_event_loop()
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
     main_task = asyncio.ensure_future(main())
     
     for signal in [SIGINT, SIGTERM]:

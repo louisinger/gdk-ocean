@@ -1,12 +1,11 @@
-import logging
 import greenaddress as gdk
 import json
 from typing import List, Dict, Tuple
 from domain.address_details import AddressDetails
 from domain.gdk_utils import gdk_resolve
 from domain.receiver import Receiver, receiver_to_dict
-from domain.utxo import CoinSelectionResult, Utxo
-from domain.locker import Locker, Outpoint
+from domain.utxo import CoinSelectionResult, Outpoint, Utxo
+from domain.locker import Locker
 
 # fetch_subaccount() is using to get the subaccount JSON object from a GDK session
 def fetch_subaccount(session: gdk.Session, accountID: str):
@@ -54,7 +53,7 @@ class GdkAccount():
 
     def _lock_coin_selection(self, coin_selection: CoinSelectionResult):
         for utxo in coin_selection['utxos']:
-            self.locker.lock(utxo)
+            self.locker.lock(utxo, self.account_key)
 
     def select_utxos(self, asset: str, amount: int) -> CoinSelectionResult: 
         all_utxos_for_asset = self.get_all_utxos(True)[asset]

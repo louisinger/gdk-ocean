@@ -14,12 +14,13 @@ class GdkWallet:
         self.session: gdk.Session = None
         self.last_block_height = 0
         self.accounts: Dict[str, GdkAccount] = {}
-        self.locker = Locker()
+        self.locker: Locker = None
         
     """Class method to create and return an instance of gdk_wallet"""
     @classmethod
-    def create_new_wallet(cls, mnemonic: str, pin: str, network: str):
+    async def create_new_wallet(cls, mnemonic: str, pin: str, network: str):
         self = cls()
+        self.locker = await Locker.create()
         self.session = make_session(network)
         self.session.register_user({}, mnemonic).resolve()
         self.session.login_user({}, {'mnemonic': mnemonic, 'password': ""}).resolve()
@@ -29,8 +30,9 @@ class GdkWallet:
 
     """Class method to create and return an instance of gdk_wallet"""
     @classmethod
-    def login_with_pin(cls, pin: str, network: str):
+    async def login_with_pin(cls, pin: str, network: str):
         self = cls()
+        self.locker = await Locker.create()
         pin_data = json.loads(open(self.PIN_DATA_FILENAME).read())
         self.session = make_session(network)
         self.session.login_user({}, {'pin': pin, 'pin_data': pin_data}).resolve()

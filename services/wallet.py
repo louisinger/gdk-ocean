@@ -21,18 +21,18 @@ class WalletService:
     def generate_seed(self) -> str:
         return gdk.generate_mnemonic()
     
-    def create_wallet(self, mnemonic: str, password: str, network: str) -> None:
+    async def create_wallet(self, mnemonic: str, password: str, network: str) -> None:
         if self._is_logged():
             raise Exception('Wallet is already logged in') 
     
-        self._wallet = GdkWallet.create_new_wallet(mnemonic, password, network)
+        self._wallet = await GdkWallet.create_new_wallet(mnemonic, password, network)
 
-    def login(self, password: bytes) -> None:
+    async def login(self, password: bytes) -> None:
         if self._is_logged():
             raise Exception('Wallet is already logged in')
         
         logging.debug('logging in...')
-        self._wallet = GdkWallet.login_with_pin(str(password), 'testnet-liquid')
+        self._wallet = await GdkWallet.login_with_pin(str(password), 'testnet-liquid')
     
     def change_password(self, password: str, newPassword: str) -> None:
         pass

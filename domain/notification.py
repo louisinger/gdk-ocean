@@ -52,6 +52,13 @@ class UtxoUnspecifiedNotification(UtxoNotification):
     def __init__(self, utxo: Utxo, account_name: str):
         super().__init__(NotificationType.UTXO_UNSPECIFIED, utxo, account_name)
     
+class UtxoLockedNotification(UtxoNotification):
+    def __init__(self, data: Utxo, account_name: str):
+        super().__init__(NotificationType.UTXO_LOCKED, data, account_name)
+
+class UtxoUnlockedNotification(UtxoNotification):
+    def __init__(self, data: Utxo, account_name: str):
+        super().__init__(NotificationType.UTXO_UNLOCKED, data, account_name)
 
 class TxNotification(BaseNotification):
     def __init__(self, n_type: NotificationType, txid: str, block_height: int, block_hash: str):
