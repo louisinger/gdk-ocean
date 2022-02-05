@@ -24,8 +24,8 @@ class Locker():
         locker.notifications_queue = asyncio.Queue()
         return locker
     
-    """custom set in the locker, taking into account the lock time"""
     def _add_outpoint_to_locker(self, utxo: Utxo, account_name: str) -> None:
+        """custom set in the locker, taking into account the lock time"""
         free_at = int(time.time()) + LOCKTIME_SECONDS
         currently_locked = self._locked_utxos.get(free_at)
 
@@ -37,8 +37,8 @@ class Locker():
             self._locked_utxos[free_at] = currently_locked
         self.notifications_queue.put_nowait(UtxoLockedNotification(utxo, account_name))
 
-    """check if the outpoint is in the locker, ideally you should first call _free_locker() before calling this method"""
     def _is_in_locker(self, outpoint: Outpoint) -> boolean:
+        """check if the outpoint is in the locker, ideally you should first call _free_locker() before calling this method"""
         if not self._locked_utxos:
             return False
         
@@ -49,8 +49,8 @@ class Locker():
         
         return False
         
-    """free all the outpoints that are in the locker with time <= now"""
     def _free_locker(self):
+        """free all the outpoints that are in the locker with time <= now"""
         now = int(time.time())
         for locked_time in self._locked_utxos.keys():
             if locked_time <= now:
@@ -61,12 +61,12 @@ class Locker():
                     logging.debug(f"Unlocked {freed_utxo}")
                 return True
 
-    """lock an utxo for a certain amount of time, defined by LOCKTIME_SECONDS"""
     def lock(self, utxo: Utxo, account_name: str) -> None:
+        """lock an utxo for a certain amount of time, defined by LOCKTIME_SECONDS"""
         self._add_outpoint_to_locker(utxo, account_name)
 
-    """checks if the utxo is locked"""
     def is_locked(self, outpoint: Outpoint) -> bool:
+        """checks if the utxo is locked"""
         self._free_locker() # remove all free outpoints
         return self._is_in_locker(outpoint)
         

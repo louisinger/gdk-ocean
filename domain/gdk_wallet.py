@@ -16,9 +16,9 @@ class GdkWallet:
         self.accounts: Dict[str, GdkAccount] = {}
         self.locker: Locker = None
         
-    """Class method to create and return an instance of gdk_wallet"""
     @classmethod
     async def create_new_wallet(cls, mnemonic: str, pin: str, network: str):
+        """Class method to create and return an instance of gdk_wallet"""
         self = cls()
         self.locker = await Locker.create()
         self.session = make_session(network)
@@ -28,9 +28,9 @@ class GdkWallet:
         self._get_existing_subaccounts()
         return self
 
-    """Class method to create and return an instance of gdk_wallet"""
     @classmethod
     async def login_with_pin(cls, pin: str, network: str):
+        """Class method to create and return an instance of gdk_wallet"""
         self = cls()
         self.locker = await Locker.create()
         pin_data = json.loads(open(self.PIN_DATA_FILENAME).read())
@@ -41,6 +41,7 @@ class GdkWallet:
         return self
     
     def _get_existing_subaccounts(self):
+        """get all the existing subaccounts from gdk and create GdkAccount objects for them"""
         subaccounts = self.session.get_subaccounts({}).resolve()
         for account in subaccounts['subaccounts']:
             self.accounts[account['name']] = GdkAccount(self.session, account['name'], self.locker)
@@ -70,6 +71,7 @@ class GdkWallet:
         return acc
     
     def create_new_account(self, account_key: str) -> GdkAccount:
+        """create a new gdk subaccount + the corresponding GdkAccount object"""
         self.session.create_subaccount({'name': account_key, 'type': self.AMP_ACCOUNT_TYPE}).resolve()
         new_account = GdkAccount(self.session, account_key, self.locker)
         self.accounts[account_key] = new_account
